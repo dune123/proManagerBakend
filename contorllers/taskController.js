@@ -19,6 +19,15 @@ const createTask = async (req, res, next) => {
     const { title, assignTo, priority, dueDate, checklist } = req.body;
 
     const userId = req.user;
+    if(!title){
+      return res.status(404).json({message:"please provide title"})
+    }
+    if(!priority){
+      return res.status(404).json({message:"please provide priority"})
+    }
+    if(!checklist){
+      return res.status(404).json({message:"please provide checklist"})
+    }
 
     const newTask = new Task({
       taskName: title,
