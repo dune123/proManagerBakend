@@ -160,18 +160,20 @@ const getanalytics = async (req, res, next) => {
   try {
     const user = req.user;
 
-    const finduser = User.findById(user);
+    const finduser =await User.findById(user);
+    console.log(finduser)
     if (!finduser) {
       return res.status(404).json({ message: "User not found" });
     }
 
     const status = ["To Do", "In Progress", "Done", "Backlog"];
 
+
     let resultforstatus = {};
     for (let i of status) {
-      let currentCnt = await Task.countDocuments({ status: i });
+      let currentCnt = await Task.countDocuments({ status: i ,createdBy:user,assigned:finduser.email});
 
-
+      console.log(currentCnt)
       if(i==="In Progress") {
       resultforstatus["Inprogress"] = currentCnt;
       }
@@ -186,7 +188,7 @@ const getanalytics = async (req, res, next) => {
     const priority = ["high", "low", "moderate"];
     let resultforpriority = {};
     for (let i of priority) {
-      let currentCnt = await Task.countDocuments({ priority: i });
+      let currentCnt = await Task.countDocuments({ priority: i ,createdBy:user,assigned:finduser.email});
 
       resultforpriority[i] = currentCnt;
     }
