@@ -29,9 +29,11 @@ const createTask = async (req, res, next) => {
       return res.status(404).json({message:"please provide checklist"})
     }
 
-    if(!checklist.description){
-      return res.status(404).json({message:"please provide atleast one checklist item"})
-    }
+    checklist.map((data)=>{
+      if(!data.description){
+        return res.status(404).json({message:"please provide atleast one checklist item"})
+      }
+    })
 
     const newTask = new Task({
       taskName: title,
