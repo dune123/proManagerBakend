@@ -114,9 +114,18 @@ const getTask = async (req, res, next) => {
     }
 
     let createdTasks = await Task.find({ createdBy: userId });
-    let assignedTasks = await Task.find({ assignTo: finduser.email });
+let assignedTasks = await Task.find({ assigned: finduser.email });
 
-    let tasks = [...createdTasks, ...assignedTasks];
+let uniqueTaskIds = new Set();
+
+createdTasks.forEach(task => uniqueTaskIds.add(task._id.toString()));
+
+assignedTasks.forEach(task => uniqueTaskIds.add(task._id.toString()));
+
+let uniqueTaskIdsArray = Array.from(uniqueTaskIds);
+
+
+let tasks = await Task.find({ _id: { $in: uniqueTaskIdsArray } });
 
     //filter the tasks according to there week assets
       function filterTaskByDate(filter, tasks) {
