@@ -210,6 +210,25 @@ const getanalytics = async (req, res, next) => {
     let resultforstatus = {};
 
     for(let i of status){
+      if(i==="In Progres"){
+      let currentCnt=0;
+      tasks.forEach((task)=>{
+        if(task.status===i){
+          currentCnt=currentCnt+1;
+        }
+      })
+      resultforstatus["Inprogress"] = currentCnt;
+    }
+    else if(i==="To Do"){
+      let currentCnt=0;
+      tasks.forEach((task)=>{
+        if(task.status===i){
+          currentCnt=currentCnt+1;
+        }
+      })
+      resultforstatus["Todo"] = currentCnt;
+    }
+    else{
       let currentCnt=0;
       tasks.forEach((task)=>{
         if(task.status===i){
@@ -217,6 +236,7 @@ const getanalytics = async (req, res, next) => {
         }
       })
       resultforstatus[i] = currentCnt;
+    }
     }
 
     /*for (let i of status) {
