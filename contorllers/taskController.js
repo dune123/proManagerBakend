@@ -133,10 +133,10 @@ let tasks = await Task.find({ _id: { $in: uniqueTaskIdsArray } });
     const now = new Date();
     endDate = new Date();
     
-    if (filter === "Today") {
-      startDate = new Date(now);
-        startDate.setDate(now.getDate() - now.getDay());
-        startDate.setHours(0, 0, 0, 0); }
+        if (filter === "Today") {
+        startDate = new Date(endDate);
+        startDate.setHours(endDate.getHours() - 24);
+        }
        else if(filter==="This Week"){
         startDate = new Date(now);
         startDate.setDate(now.getDate() - 7);
