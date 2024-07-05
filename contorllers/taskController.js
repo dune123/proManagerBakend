@@ -210,7 +210,7 @@ const getanalytics = async (req, res, next) => {
     let resultforstatus = {};
 
     for(let i of status){
-      if(i==="In Progres"){
+      if(i==="In Progress"){
       let currentCnt=0;
       tasks.forEach((task)=>{
         if(task.status===i){
@@ -256,11 +256,6 @@ const getanalytics = async (req, res, next) => {
 
     const priority = ["high", "low", "moderate"];
     let resultforpriority = {};
-    /*for (let i of priority) {
-      let currentCnt = await Task.countDocuments({ priority: i ,createdBy:user,assigned:finduser.email});
-
-      resultforpriority[i] = currentCnt;
-    }*/
    for(let i of priority){
     let currentCnt=0;
     tasks.forEach((task)=>{
@@ -272,16 +267,6 @@ const getanalytics = async (req, res, next) => {
    }
 
     let numberofDuedate = 0;
-   /*const TaskByUser = await Task.find({ createdBy: user });
-
-    for (let i in TaskByUser) {
-      if (TaskByUser[i].dueDate !== null) {
-        let currentNumber = TaskByUser[i].dueDate < Date.now() ? 1 : 0;
-
-        numberofDuedate =numberofDuedate+currentNumber;
-      }
-    }*/
-
     tasks.forEach((task)=>{
       if (task.dueDate !== null) {
         let currentNumber = task.dueDate < Date.now() ? 1 : 0;
