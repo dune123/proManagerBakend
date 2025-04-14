@@ -1,16 +1,5 @@
 const mongoose=require('mongoose')
 
-const boardUserSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    email: {
-        type: String,
-        required: true
-    }
-});
 
 const userSchema=new mongoose.Schema({
     username:{
@@ -28,8 +17,7 @@ const userSchema=new mongoose.Schema({
     tasks:[{
         type:mongoose.Schema.Types.ObjectId,
         ref:"Task"
-    }],
-    boardUsers: [boardUserSchema]
+    }]
 })
 
 module.exports=mongoose.model('User',userSchema)

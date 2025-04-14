@@ -6,6 +6,7 @@ dotenv.config();
 
 const Task = require("../models/task");
 const User = require("../models/user");
+const user = require("../models/user");
 
 // Error handler middleware
 const errorHandler = (res, error) => {
@@ -16,34 +17,25 @@ const errorHandler = (res, error) => {
 //to create a new Task
 const createTask = async (req, res, next) => {
   try {
-    const { title, assignTo, priority, dueDate, checklist } = req.body;
+    const { taskName, description,dueDate,status } = req.body;
 
     const userId = req.user;
-    if(!title){
+    if(!taskName){
       return res.status(404).json({message:"please provide title"})
     }
-    if(!priority){
+    if(!description){
       return res.status(404).json({message:"please provide priority"})
     }
-    if(!checklist){
-      return res.status(404).json({message:"please provide checklist"})
+    if(!status){
+      return res.status(404).json({message:"please provide status"})
     }
-
-    checklist.map((data,index)=>{
-      if(data.description===""){
-        return res.status(404).json({message:"please provide atleast one checklist item"})
-      }
-    })
+    console.log("dueDate",dueDate)
 
     const newTask = new Task({
-      taskName: title,
-      assigned:assignTo,
-      priority,
-      dueDate,
-      checklist,
-      status: "To Do",
-      createdAt: Date.now(),
-      createdBy: userId,
+      taskName,
+      description,
+      status,
+      duedate:dueDate
     });
 
     const savedTask = await newTask.save();
@@ -55,23 +47,10 @@ const createTask = async (req, res, next) => {
 
     await findLoginedUser.save();
 
-    //saving under the person who has been assigned to the task
-    if(assignTo!==findLoginedUser.email){
-    const assigneduser = await User.find({email:assignTo});
-
-    if (!assigneduser) {
-      return res.status(404).json({ message: "Assigned user not found" });
-    }
-
-    assigneduser.tasks.push(savedTask._id);
-    await assigneduser.save();
-  }
-
     return res
       .status(201)
       .json({
         message: "Task created and assigned successfully",
-        task: savedTask,
       });
   } catch (error) {
     errorHandler(res, error);
@@ -106,216 +85,14 @@ const getTask = async (req, res, next) => {
   try {
     const userId = req.user;
 
-    const {filter}=req.params;
+    const userWithTasks = await User.findById(userId).populate('tasks');
 
-    const finduser = await User.findById(userId);
-    if (!finduser) {
+    if (!userWithTasks) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    let createdTasks = await Task.find({ createdBy: userId });
-let assignedTasks = await Task.find({ assigned: finduser.email });
+    return res.status(200).json({ tasks: userWithTasks.tasks });
 
-let uniqueTaskIds = new Set();
-
-createdTasks.forEach(task => uniqueTaskIds.add(task._id.toString()));
-
-assignedTasks.forEach(task => uniqueTaskIds.add(task._id.toString()));
-
-let uniqueTaskIdsArray = Array.from(uniqueTaskIds);
-
-
-let tasks = await Task.find({ _id: { $in: uniqueTaskIdsArray } });
-
-    //filter the tasks according to there week assets
-      function filterTaskByDate(filter, tasks) {
-        let startDate, endDate;
-    const now = new Date();
-    endDate = new Date();
-    
-        if (filter === "Today") {
-        startDate = new Date(endDate);
-        startDate.setHours(endDate.getHours() - 24);
-        }
-       else if(filter==="This Week"){
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - 7);
-        startDate.setHours(0, 0, 0, 0);
-        } else if (filter === "This Month") {
-        startDate = new Date(endDate);
-        startDate.setMonth(endDate.getMonth() - 1);
-        }
-    
-        let newTasklist = [];
-    
-        tasks.forEach((task) => {
-            const createdDate = new Date(task.createAt);
-            if (createdDate >= startDate && createdDate <= endDate) {
-                newTasklist.push(task);
-            }
-        });
-        
-        return newTasklist;
-    }
-  
-  const filteredTask = filterTaskByDate(filter, tasks);
-
-    //group task according to there status
-    const groupTask = filteredTask.reduce((acc, task) => {
-      const status = task.status; 
-      if (!acc[status]) {
-        acc[status] = [];
-      }
-      acc[status].push(task);
-      return acc;
-    }, {});
-
-    return res
-      .status(201)
-      .json({ message: "all the task for this user", tasks: groupTask });
-  } catch (error) {
-    errorHandler(res, error);
-  }
-};
-
-
-//get analytics sections
-const getanalytics = async (req, res, next) => {
-  try {
-    const user = req.user;
-
-    const finduser =await User.findById(user);
-
-    if (!finduser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const status = ["To Do", "In Progress", "Done", "Backlog"];
-
-    
-    let createdTasks = await Task.find({ createdBy: user });
-    let assignedTasks = await Task.find({ assigned: finduser.email });
-
-    let uniqueTaskIds = new Set();
-
-    createdTasks.forEach(task => uniqueTaskIds.add(task._id.toString()));
-
-    assignedTasks.forEach(task => uniqueTaskIds.add(task._id.toString()));
-
-    let uniqueTaskIdsArray = Array.from(uniqueTaskIds);
-
-
-    let tasks = await Task.find({ _id: { $in: uniqueTaskIdsArray } });
-
-    let resultforstatus = {};
-
-    for(let i of status){
-      if(i==="In Progress"){
-      let currentCnt=0;
-      tasks.forEach((task)=>{
-        if(task.status===i){
-          currentCnt=currentCnt+1;
-        }
-      })
-      resultforstatus["Inprogress"] = currentCnt;
-    }
-    else if(i==="To Do"){
-      let currentCnt=0;
-      tasks.forEach((task)=>{
-        if(task.status===i){
-          currentCnt=currentCnt+1;
-        }
-      })
-      resultforstatus["Todo"] = currentCnt;
-    }
-    else{
-      let currentCnt=0;
-      tasks.forEach((task)=>{
-        if(task.status===i){
-          currentCnt=currentCnt+1;
-        }
-      })
-      resultforstatus[i] = currentCnt;
-    }
-    }
-
-    /*for (let i of status) {
-      let currentCnt = await Task.countDocuments({ status: i ,createdBy:user});
-      let assignedCnt=await Task.countDocuments({status:i,assigned:user})
-
-      if(i==="In Progress") {
-      resultforstatus["Inprogress"] = currentCnt;
-      }
-      else if(i==="To Do") {
-        resultforstatus["Todo"] = currentCnt;
-      }
-      else{
-        resultforstatus[i] = currentCnt;
-      }
-    }*/
-
-    const priority = ["high", "low", "moderate"];
-    let resultforpriority = {};
-   for(let i of priority){
-    let currentCnt=0;
-    tasks.forEach((task)=>{
-      if(task.priority===i){
-        currentCnt=currentCnt+1;
-      }
-    })
-    resultforpriority[i]=currentCnt;
-   }
-
-    let numberofDuedate = 0;
-    tasks.forEach((task)=>{
-      if (task.dueDate !== null) {
-        let currentNumber = task.dueDate < Date.now() ? 1 : 0;
-
-        numberofDuedate =numberofDuedate+currentNumber;
-      }
-    })
-    return res
-      .status(200)
-      .json({
-        resultforstatus: resultforstatus,
-        resultforpriority: resultforpriority,
-        numberofDuedate: numberofDuedate,
-      });
-  } catch (error) {
-    errorHandler(res, error);
-  }
-};
-
-//checklist item done
-const changeChecklistStatus = async (req, res, next) => {
-  try {
-    const userId = req.user;
-    const { taskId, number } = req.body;
-
-    // Find the user
-    const findUser = await User.findById(userId);
-    if (!findUser) {
-      return res.status(403).json({ message: "User not found" });
-    }
-
-    // Find the task
-    const findTask = await Task.findById(taskId);
-    if (!findTask) {
-      return res.status(404).json({ message: "Task not found" });
-    }
-
-    // Check if the checklist item exists
-    if (number >= findTask.checklist.length) {
-      return res.status(400).json({ message: "Checklist item not found" });
-    }
-
-    // Toggle the checked status
-    findTask.checklist[number].checked = !findTask.checklist[number].checked;
-
-    // Save the updated task to persist the change
-    await findTask.save();
-
-    return res.status(200).json(findTask);
   } catch (error) {
     errorHandler(res, error);
   }
@@ -340,35 +117,30 @@ const getTaskwithoutId=async(req,res,next)=>{
 const deleteTask=async(req,res,next)=>{
   try {
     const { taskId } = req.body;
+    const userId = req.user;
 
-const findTask = await Task.findById(taskId);
-if (!findTask) {
-  return res.status(404).json({ message: "Task not found" });
-}
+    // Find the task
+    const findTask = await Task.findById(taskId);
+    if (!findTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
 
-const { createdBy, assigned } = findTask;
+    // Find the user
+    const findUser = await User.findById(userId);
+    if (!findUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-const findUser = await User.findById(createdBy);
-if (!findUser) {
-  return res.status(404).json({ message: "User not found" });
-}
-
-if (assigned && assigned !== findUser.email) {
-  const findAssignedUser = await User.findOne({ email: assigned });
-  if (findAssignedUser) {
-    findAssignedUser.tasks = findAssignedUser.tasks.filter(
+    // Remove task reference from user
+    findUser.tasks = findUser.tasks.filter(
       (task) => task.toString() !== taskId
     );
-    await findAssignedUser.save();
-  }
-}
+    await findUser.save();
+    
+    // Delete task from Task model
+    await Task.findByIdAndDelete(taskId);
 
-findUser.tasks = findUser.tasks.filter((task) => task.toString() !== taskId);
-await findUser.save();
-
-await Task.findByIdAndDelete(taskId);
-
-return res.status(201).json({ message: "Task deleted successfully" });
+    return res.status(200).json({ message: "Task deleted successfully" });
   } catch (error) {
     errorHandler(res,error);
   }
@@ -401,45 +173,13 @@ const editTask = async (req, res, next) => {
   }
 };
 
-const changeChecklistDone=async(req,res,next)=>{
-  try {
-    const {taskId}=req.params;
 
-    const findTask = await Task.findById(taskId)
-    
-    if(!findTask){
-      return res.status(403).json({message:"Task Not Found"})
-    }
-
-    const {checklistItemId,isChecked} = req.body;
-    console.log(checklistItemId)
-    console.log(isChecked)
-    // Find the checklist item in the task's checklist array
-    const checklistItem = findTask.checklist.find(item => item._id.toString() === checklistItemId);
-
-    if (!checklistItem) {
-      return res.status(404).json({ message: "Checklist Item Not Found" });
-    }
-
-    checklistItem.checked = isChecked;
-
-    // Save the updated task
-    await findTask.save();
-
-    return res.status(201).json({message: "Task updated"});
-  } catch (error) {
-    errorHandler(res, error);
-  }
-}
 
 module.exports = {
   createTask,
   changeStatus,
   getTask,
-  getanalytics,
-  changeChecklistStatus,
   getTaskwithoutId,
   deleteTask,
-  editTask,
-  changeChecklistDone
+  editTask
 };

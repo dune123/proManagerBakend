@@ -1,45 +1,23 @@
 const mongoose=require('mongoose')
 
-const checklistItemSchema = new mongoose.Schema({
-    checked: {
-        type: Boolean,
-        default: false
-    },
-    description: {
-        type: String,
-        required: true
-    }
-});
 
 const taskSchema=new mongoose.Schema({
     taskName:{
         type:String,
         required:true
     },
-    assigned:{
-        type:String
-    },
-    assignedEmail:{
-        type:String,
-    },
-    priority:{
+    description:{
         type:String,
         required:true
     },
-    dueDate:{
-        type:Date
-    },
-    checklist:[checklistItemSchema],
-    status:{
-        type:String
-    },
-    createAt:{
+    duedate:{
         type:Date,
-        default:Date.now()
+        required:true
     },
-    createdBy:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:"User"
+    status:{
+        type:String,
+        enum:['todo', 'backlog', 'done'],
+        default:'todo'
     }
 })
 

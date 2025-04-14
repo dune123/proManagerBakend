@@ -82,7 +82,7 @@ const registerUser = async (req, res, next) => {
 const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
+    
     if (!email) {
       return res
         .status(400)
@@ -153,50 +153,6 @@ const logoutUser = async (req, res, next) => {
   }
 };
 
-const addboardUser = async (req, res, next) => {
-  try {
-    const { email } = req.body;
-    const currentUser = req.user;
-
-    console.log(email);
-    console.log(currentUser);
-
-    const findUser = await User.findById(currentUser);
-    if (!findUser) {
-      return res.status(403).json({ message: "User not found" });
-    }
-
-    const addedUser = await User.findOne({ email: email });
-    if (!addedUser) {
-      return res.status(404).json({ message: "Added user not found" });
-    }
-
-    const userId = addedUser._id;
-    findUser.boardUsers.push({ userId, email });
-    await findUser.save();
-
-    return res.status(200).json({ message: "Board user added successfully" });
-  } catch (error) {
-    errorHandler(res, error);
-  }
-};
-
-const getBoardUsers = async (req, res, next) => {
-  try {
-    const user = req.user;
-
-    const findUser = await User.findById(user);
-
-    if (!findUser) {
-      return res.status(404).json({ message: "User not founr" });
-    }
-
-    return res.status(200).json({ allBoardUsers: findUser.boardUsers });
-  } catch (error) {
-    errorHandler(res, error);
-  }
-};
-
 const changePassword = async (req, res, next) => {
   try {
     const { oldPassword, newPassword } = req.body;
@@ -256,8 +212,6 @@ module.exports = {
   registerUser,
   loginUser,
   logoutUser,
-  addboardUser,
-  getBoardUsers,
   changePassword,
   getEmailById,
 };
