@@ -7,7 +7,7 @@ const boardUserSchema=new mongoose.Schema({
     },
     email:{
         type:String,
-        reuired:true
+        required:true
     }
 })
 

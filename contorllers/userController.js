@@ -208,29 +208,52 @@ const getEmailById = async (req, res, next) => {
   }
 };
 
-const addBoardUser=async(req,res,next)=>{
+const addBoardUser = async (req, res) => {
   try {
-    const {boardId}=req.body;
-    const userId=req.user
-    if(!boardId){
-      return res.status(404).json({message:'Board Id is required'})
-    }
+    const { boardUserEmail } = req.body;
+    const currentUserId=req.user
+    
+    // Find the user who owns the board
+    const currentUser = await User.findById(currentUserId);
+    if (!currentUser) return res.status(404).json({ error: "User not found" });
 
+    // Find the user to be added to the board
+    const boardUser = await User.findOne({ email: boardUserEmail });
+    if (!boardUser) return res.status(404).json({ error: "Board user not found" });
+
+    // Check if already added
+    const alreadyAdded = currentUser.boardUsers.some(
+      (u) => u.userId.toString() === boardUser._id.toString()
+    );
+    if (alreadyAdded) return res.status(400).json({ error: "User already added to board" });
+
+    // Add to boardUsers
+    currentUser.boardUsers.push({
+      userId: boardUser._id,
+      email: boardUser.email
+    });
+
+    await currentUser.save();
+
+    res.status(200).json({ message: "User added to board successfully", boardUsers: currentUser.boardUsers });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const getBoardUsers=async(req,res)=>{
+  try {
+    const userId=req.user;
+    
     const findUser=await User.findById(userId);
 
-    if(!findUser.boardUsers.includes(boardId)){
-      findUser.boardUsers.push(boardId);
-    }
-    else{
-      return res.status(300).json({message:"User had already been added in the database"})
-    }
-
-    await findUser.save()
-    return res.status(201).json({message:"User added successfully"})
+    return res.status(200).json({boardUser:findUser.boardUsers});
   } catch (error) {
-    errorHandler(res,error);
+    errorHandler(res.error)
   }
 }
+
 
 module.exports = {
   registerUser,
@@ -238,5 +261,6 @@ module.exports = {
   logoutUser,
   changePassword,
   getEmailById,
-  addBoardUser
+  addBoardUser,
+  getBoardUsers
 };

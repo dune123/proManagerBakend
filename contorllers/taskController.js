@@ -17,35 +17,75 @@ const errorHandler = (res, error) => {
 //to create a new Task
 const createTask = async (req, res, next) => {
   try {
-    const { taskName, description,dueDate,status } = req.body;
+    const { taskName, priority,checkList,dueDate,status,assignedEmail } = req.body;
 
     const userId = req.user;
     if(!taskName){
       return res.status(404).json({message:"please provide title"})
     }
-    if(!description){
+    if(!checkList){
+      return res.status(404).json({message:"please provide checklist"})
+    }
+    else{
+      if (!Array.isArray(checkList)) {
+        return res.status(404).json({ message: "Checklist should be an array" });
+      }
+      
+      for (const item of checkList) {
+        if (item.description.trim() === "") {
+          return res.status(404).json({ message: "Checklist item cannot be empty" });
+        }
+      }
+    }
+    if(!priority){
       return res.status(404).json({message:"please provide priority"})
     }
+
     if(!status){
       return res.status(404).json({message:"please provide status"})
     }
-    console.log("dueDate",dueDate)
+
+    if(!dueDate){
+      return res.status(404).json({message:"due date is required"})
+    }
+    else{
+      if(dueDate<Date.now()){
+        return res.status(404).json({message:"due date can not be less than today"})
+      }
+    }
+
+
+    const findLoginedUser = await User.findById(userId);
+
+    if(!assignedEmail){
+      assignedEmail=findLoginedUser.email
+    }
 
     const newTask = new Task({
       taskName,
-      description,
+      checklist:checkList,
+      priority,
       status,
+      assigned:assignedEmail,
       duedate:dueDate
     });
 
     const savedTask = await newTask.save();
 
     //saving under the person who is creating the task
-    const findLoginedUser = await User.findById(userId);
 
     findLoginedUser.tasks.push(savedTask._id);
 
     await findLoginedUser.save();
+    
+    //saving under the person who is assigned
+    if(assignedEmail){
+      const assignedUser=await User.findOne({email:assignedEmail});
+
+      assignedUser.tasks.push(savedTask._id);
+
+      await assignedUser.save()
+    }
 
     return res
       .status(201)
@@ -79,6 +119,32 @@ const changeStatus = async (req, res, next) => {
     errorHandler(res, error);
   }
 };
+
+//To change checklist item status
+const changeChecklistItems = async (req, res, next) => {
+  try {
+    const { taskId, checklistItemIds,checkedItem} = req.body;
+
+    const findTask = await Task.findById(taskId);
+
+    if (!findTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    findTask.checklist.forEach(item => {
+      if (item._id.toString() === checklistItemIds) {
+        item.checked = checkedItem;
+      }
+    });
+
+    await findTask.save();
+
+    res.status(200).json({ message: "Checklist item updated", task: findTask });
+  } catch (error) {
+    errorHandler(res, error);
+  }
+};
+
 
 //get all the task and group them on the basis of status
 const getTask = async (req, res, next) => {
@@ -173,6 +239,27 @@ const editTask = async (req, res, next) => {
   }
 };
 
+const getTaskById = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+
+    if (!taskId) {
+      return res.status(402).json({ message: "Task Id is required" });
+    }
+
+    const findTask = await Task.findById(taskId);
+
+    if (!findTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    return res.status(201).json({ task: findTask });
+  } catch (error) {
+    errorHandler(res, error);
+  }
+};
+
+
 
 
 module.exports = {
@@ -181,5 +268,7 @@ module.exports = {
   getTask,
   getTaskwithoutId,
   deleteTask,
-  editTask
+  editTask,
+  changeChecklistItems,
+  getTaskById
 };
