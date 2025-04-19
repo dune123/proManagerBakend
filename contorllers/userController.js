@@ -208,10 +208,35 @@ const getEmailById = async (req, res, next) => {
   }
 };
 
+const addBoardUser=async(req,res,next)=>{
+  try {
+    const {boardId}=req.body;
+    const userId=req.user
+    if(!boardId){
+      return res.status(404).json({message:'Board Id is required'})
+    }
+
+    const findUser=await User.findById(userId);
+
+    if(!findUser.boardUsers.includes(boardId)){
+      findUser.boardUsers.push(boardId);
+    }
+    else{
+      return res.status(300).json({message:"User had already been added in the database"})
+    }
+
+    await findUser.save()
+    return res.status(201).json({message:"User added successfully"})
+  } catch (error) {
+    errorHandler(res,error);
+  }
+}
+
 module.exports = {
   registerUser,
   loginUser,
   logoutUser,
   changePassword,
   getEmailById,
+  addBoardUser
 };

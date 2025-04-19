@@ -1,5 +1,15 @@
 const mongoose=require('mongoose')
 
+const checklistSchema=new mongoose.Schema({
+    checked:{
+        type:Boolean,
+        default:false
+    },
+    description:{
+        type:String,
+        required:true
+    }
+})
 
 const taskSchema=new mongoose.Schema({
     taskName:{
@@ -16,8 +26,20 @@ const taskSchema=new mongoose.Schema({
     },
     status:{
         type:String,
-        enum:['todo', 'backlog', 'done'],
+        enum:['todo', 'backlog', 'done','inprogress'],
         default:'todo'
+    },
+    checklist:[checklistSchema],
+    assigned:{
+        type:String
+    },
+    priority:{
+        type:String,
+        required:true
+    },
+    createdAt:{
+        type:Date,
+        default:Date.now()
     }
 })
 
