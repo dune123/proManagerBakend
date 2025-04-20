@@ -12,6 +12,6 @@ router.put("/editTask/:taskId",requireAuth,editTask)
 router.put("/checklistChange",requireAuth,changeChecklistItems)
 router.get('/getTaskById/:taskId',getTaskById)
 router.get('/getanalytics',requireAuth,getAnalytics)
-router.get('/checklistsuggestion',requireAuth,checkListSuggestion)
+router.get('/checklistsuggestion/:taskName',checkListSuggestion)
 
 module.exports=router

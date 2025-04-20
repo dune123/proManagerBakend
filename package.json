@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
+    "axios": "^1.8.4",
     "bcrpyt": "^2.0.0",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",

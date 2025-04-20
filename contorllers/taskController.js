@@ -1,12 +1,13 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
+const axios =require('axios');
 const mongoose = require("mongoose");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 dotenv.config();
 
 const Task = require("../models/task");
 const User = require("../models/user");
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Error handler middleware
 const errorHandler = (res, error) => {
@@ -311,33 +312,39 @@ const getAnalytics = async (req, res, next) => {
 };
 
 const checkListSuggestion=async(req,res,next)=>{
-  const { taskName } = req.body;
 
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   try {
-    // Get the generative model (gemini-pro is the text model)
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    
+    const { taskName } = req.params;
     const prompt = `Given a task titled "${taskName}", suggest 3 to 5 actionable checklist items a user might need to complete it. Return the list only in numbered format.`;
+    console.log(taskName)
+    let response=await genAI.models.generateContent({
+      model: "gemini-2.0-flash", // Use this model
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
+      ],
+    });
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
     const rawText = response.text();
-
-    // Process the response to extract suggestions
+    
     const suggestions = rawText
       .split("\n")
       .map((line) => line.replace(/^\d+\.\s*/, "").trim())
       .filter(Boolean);
-
-    res.json({ suggestions });
+   
+    return res.status(200).json({ suggestions });
   } catch (error) {
-    console.error("Gemini API error:", error);
-    res.status(500).json({ 
-      message: "AI suggestion failed", 
-      error: error.message 
+    console.error("Gemini API error:", error?.response?.data || error.message);
+    res.status(500).json({
+      message: "AI suggestion failed",
+      error: error.message,
     });
   }
 }
+
 
 
 module.exports = {
