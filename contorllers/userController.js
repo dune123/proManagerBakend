@@ -79,6 +79,22 @@ const registerUser = async (req, res, next) => {
   }
 };
 
+const checkUser=async(req,res,next)=>{
+  try {
+    const userId=req.user;
+
+    const user = await User.findById(userId);
+
+    if(!user){
+      return res.status(402).json({status:false})
+    }
+
+    return res.status(200).json({status:true})
+  } catch (error) {
+    errorHandler(res,error)
+  }
+}
+
 const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -262,5 +278,6 @@ module.exports = {
   changePassword,
   getEmailById,
   addBoardUser,
-  getBoardUsers
+  getBoardUsers,
+  checkUser
 };

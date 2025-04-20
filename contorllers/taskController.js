@@ -116,6 +116,63 @@ const changeStatus = async (req, res, next) => {
   }
 };
 
+const reorderTask = async (req, res) => {
+  try {
+    const { taskId, newOrder } = req.body;
+
+    // Validate input
+    if (!taskId || newOrder === undefined || newOrder < 0) {
+      return res.status(400).json({ message: "Invalid input parameters" });
+    }
+
+    // Find the task to reorder
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Get all tasks in the same status group, sorted by current order
+    const tasks = await Task.find({ status: task.status })
+      .sort({ order: 1 })
+      .lean();
+
+    // Remove the current task from the list
+    const filteredTasks = tasks.filter(t => t._id.toString() !== taskId.toString());
+
+    // Validate new position
+    if (newOrder > filteredTasks.length) {
+      return res.status(400).json({ message: "Invalid new position" });
+    }
+
+    // Create new ordered list
+    const updatedTasks = [
+      ...filteredTasks.slice(0, newOrder),
+      task,
+      ...filteredTasks.slice(newOrder)
+    ];
+
+    // Prepare bulk update operations
+    const bulkOps = updatedTasks.map((t, index) => ({
+      updateOne: {
+        filter: { _id: t._id },
+        update: { $set: { order: index } }
+      }
+    }));
+
+    // Execute all updates in a single operation
+    await Task.bulkWrite(bulkOps);
+
+    return res.status(200).json({ 
+      message: "Task reordered successfully",
+      newOrder: newOrder,
+      status: task.status
+    });
+
+  } catch (error) {
+    errorHandler(res, error);
+  }
+};
+
 //To change checklist item status
 const changeChecklistItems = async (req, res, next) => {
   try {
@@ -312,14 +369,14 @@ const getAnalytics = async (req, res, next) => {
 };
 
 const checkListSuggestion=async(req,res,next)=>{
-
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   try {
     const { taskName } = req.params;
-    const prompt = `Given a task titled "${taskName}", suggest 3 to 5 actionable checklist items a user might need to complete it. Return the list only in numbered format.`;
-    console.log(taskName)
-    let response=await genAI.models.generateContent({
-      model: "gemini-2.0-flash", // Use this model
+    const prompt = `Given a task titled "${taskName}", suggest 3 actionable checklist items a user might need to complete it. Return the list only in numbered format.`;
+   
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // Get the model instance
+
+    const result = await model.generateContent({ // Use generateContent on the model instance
       contents: [
         {
           role: "user",
@@ -327,14 +384,16 @@ const checkListSuggestion=async(req,res,next)=>{
         },
       ],
     });
+   
 
-    const rawText = response.text();
-    
+    const response = await result.response; // Access the response part
+    const rawText = response.candidates[0].content.parts[0].text; // Extract the text correctly
+
     const suggestions = rawText
       .split("\n")
       .map((line) => line.replace(/^\d+\.\s*/, "").trim())
       .filter(Boolean);
-   
+
     return res.status(200).json({ suggestions });
   } catch (error) {
     console.error("Gemini API error:", error?.response?.data || error.message);
@@ -357,5 +416,6 @@ module.exports = {
   changeChecklistItems,
   getTaskById,
   getAnalytics,
-  checkListSuggestion
+  checkListSuggestion,
+  reorderTask
 };

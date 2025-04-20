@@ -1,6 +1,6 @@
 const express=require('express')
 const requireAuth=require("../middlewares/requireAuth")
-const { createTask, changeStatus, getTask, getTaskwithoutId, deleteTask, editTask, changeChecklistItems, getTaskById, getAnalytics, checkListSuggestion }=require('../contorllers/taskController')
+const { createTask, changeStatus, getTask, getTaskwithoutId, deleteTask, editTask, changeChecklistItems, getTaskById, getAnalytics, checkListSuggestion, reorderTask }=require('../contorllers/taskController')
 
 const router=express.Router()
 router.post("/createTask",requireAuth,createTask)
@@ -13,5 +13,6 @@ router.put("/checklistChange",requireAuth,changeChecklistItems)
 router.get('/getTaskById/:taskId',getTaskById)
 router.get('/getanalytics',requireAuth,getAnalytics)
 router.get('/checklistsuggestion/:taskName',checkListSuggestion)
+router.post('/reorder',requireAuth,reorderTask)
 
 module.exports=router
