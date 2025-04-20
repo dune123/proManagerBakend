@@ -6,7 +6,7 @@ dotenv.config();
 
 const Task = require("../models/task");
 const User = require("../models/user");
-const user = require("../models/user");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Error handler middleware
 const errorHandler = (res, error) => {
@@ -17,7 +17,7 @@ const errorHandler = (res, error) => {
 //to create a new Task
 const createTask = async (req, res, next) => {
   try {
-    const { taskName, priority,checkList,dueDate,status,assignedEmail } = req.body;
+    let { taskName, priority,checkList,dueDate,status,assignedEmail } = req.body;
 
     const userId = req.user;
     if(!taskName){
@@ -54,38 +54,33 @@ const createTask = async (req, res, next) => {
       }
     }
 
-
     const findLoginedUser = await User.findById(userId);
-
-    if(!assignedEmail){
-      assignedEmail=findLoginedUser.email
-    }
 
     const newTask = new Task({
       taskName,
       checklist:checkList,
       priority,
       status,
-      assigned:assignedEmail,
+      assigned:assignedEmail==="None"?findLoginedUser.email:assignedEmail,
       duedate:dueDate
     });
 
     const savedTask = await newTask.save();
 
-    //saving under the person who is creating the task
-
-    findLoginedUser.tasks.push(savedTask._id);
-
-    await findLoginedUser.save();
-    
-    //saving under the person who is assigned
-    if(assignedEmail){
+    if(assignedEmail!=="None"){
       const assignedUser=await User.findOne({email:assignedEmail});
 
       assignedUser.tasks.push(savedTask._id);
 
       await assignedUser.save()
     }
+
+
+    //saving under the person who is creating the task
+
+    findLoginedUser.tasks.push(savedTask._id);
+
+    await findLoginedUser.save();
 
     return res
       .status(201)
@@ -144,7 +139,6 @@ const changeChecklistItems = async (req, res, next) => {
     errorHandler(res, error);
   }
 };
-
 
 //get all the task and group them on the basis of status
 const getTask = async (req, res, next) => {
@@ -225,9 +219,9 @@ const editTask = async (req, res, next) => {
 
     // Update task fields
     findTask.taskName = task.taskName || findTask.taskName;
-    findTask.assigned = task.assigned || findTask.assigned;
+    findTask.assigned = task.assigned==="None"?findTask.assigned:task.assigned;
     findTask.priority = task.priority || findTask.priority;
-    findTask.dueDate = task.dueDate || findTask.dueDate;
+    findTask.duedate = task.duedate || findTask.duedate;
     findTask.checklist = task.checklist || findTask.checklist;
     findTask.status = task.status || findTask.status;
 
@@ -259,7 +253,91 @@ const getTaskById = async (req, res, next) => {
   }
 };
 
+const getAnalytics = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const finduser = await User.findById(user);
 
+    if (!finduser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const assignedEmail = finduser.email;
+
+    // Get tasks assigned to the user
+    const assignedTasks = await Task.find({ assigned: assignedEmail });
+
+    // Get tasks from User.tasks (populated)
+    const userWithTasks = await User.findById(user).populate("tasks");
+    const userTasks = userWithTasks.tasks;
+
+    // Combine and deduplicate tasks using a Map with _id as key
+    const allTasks = [...assignedTasks, ...userTasks];
+    const uniqueTasksMap = new Map();
+
+    allTasks.forEach(task => {
+      uniqueTasksMap.set(task._id.toString(), task); // .toString() for consistency
+    });
+
+    const uniqueTasks = Array.from(uniqueTasksMap.values());
+    console.log("Unique tasks count:", uniqueTasks.length);
+
+    // Counters
+    const statusList = ["todo", "inprogress", "done", "backlog"];
+    const priorityList = ["high", "moderate", "low"];
+
+    const resultforstatus = statusList.reduce((acc, status) => {
+      acc[status] = uniqueTasks.filter(task => task.status.toLowerCase() === status).length;
+      return acc;
+    }, {});
+
+    const resultforpriority = priorityList.reduce((acc, priority) => {
+      acc[priority] = uniqueTasks.filter(task => task.priority.toLowerCase() === priority).length;
+      return acc;
+    }, {});
+
+    const numberofDuedate = uniqueTasks.reduce((count, task) => {
+      return task.duedate && new Date(task.duedate) < new Date() ? count + 1 : count;
+    }, 0);
+
+    return res.status(200).json({
+      resultforstatus,
+      resultforpriority,
+      numberofDuedate,
+    });
+  } catch (error) {
+    errorHandler(res, error);
+  }
+};
+
+const checkListSuggestion=async(req,res,next)=>{
+  const { taskName } = req.body;
+
+  try {
+    // Get the generative model (gemini-pro is the text model)
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    
+    const prompt = `Given a task titled "${taskName}", suggest 3 to 5 actionable checklist items a user might need to complete it. Return the list only in numbered format.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const rawText = response.text();
+
+    // Process the response to extract suggestions
+    const suggestions = rawText
+      .split("\n")
+      .map((line) => line.replace(/^\d+\.\s*/, "").trim())
+      .filter(Boolean);
+
+    res.json({ suggestions });
+  } catch (error) {
+    console.error("Gemini API error:", error);
+    res.status(500).json({ 
+      message: "AI suggestion failed", 
+      error: error.message 
+    });
+  }
+}
 
 
 module.exports = {
@@ -270,5 +348,7 @@ module.exports = {
   deleteTask,
   editTask,
   changeChecklistItems,
-  getTaskById
+  getTaskById,
+  getAnalytics,
+  checkListSuggestion
 };
