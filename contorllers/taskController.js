@@ -268,16 +268,19 @@ const editTask = async (req, res, next) => {
   try {
     const { task } = req.body;
     const { taskId } = req.params;
+    const userId=req.user;
 
     const findTask = await Task.findById(taskId);
 
     if (!findTask) {
       return res.status(404).json({ message: "Task not found" });
     }
+    const findUser=await User.findById(userId)
 
+    const assignedEmail=task.assigned=="None"?findUser.email:task.assigned
     // Update task fields
     findTask.taskName = task.taskName || findTask.taskName;
-    findTask.assigned = task.assigned==="None"?findTask.assigned:task.assigned;
+    findTask.assigned = assignedEmail||findTask.assigned;
     findTask.priority = task.priority || findTask.priority;
     findTask.duedate = task.duedate || findTask.duedate;
     findTask.checklist = task.checklist || findTask.checklist;
