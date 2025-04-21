@@ -16,7 +16,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
   // CORS Configuration
 const allowedOrigins = [
     'http://localhost:5173',
-    "https://airesumebuilderforyou.netlify.app"
+    "https://task-manager-lemon-mu.vercel.app"
   ];
   
   app.use(cors({
