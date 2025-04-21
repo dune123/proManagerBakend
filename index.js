@@ -14,9 +14,10 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
   // CORS Configuration
+// CORS Configuration
 const allowedOrigins = [
     'http://localhost:5173',
-    "https://task-manager-lemon-mu.vercel.app"
+    'https://task-manager-lemon-mu.vercel.app'
   ];
   
   app.use(cors({
@@ -29,7 +30,10 @@ const allowedOrigins = [
     },
     credentials: true
   }));
-
+  
+  // ✅ Add this line to explicitly handle preflight requests
+  app.options("*", cors());
+  
 // Routes
 app.use("/api/user", userRoutes);
 app.use("/api/task",taskRoutes)
